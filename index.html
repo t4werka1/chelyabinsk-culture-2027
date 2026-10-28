@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#170c66">
+  <meta name="description" content="Собирайте три в ряд, зарабатывайте очки культуры и готовьте Челябинск и Южный Урал к культурной столице 2027.">
+  <title>Культурная столица: собираем 2027</title>
+  <link rel="icon" href="assets/brand-k.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+  <script src="engine.js" defer></script>
+  <script src="content.js" defer></script>
+  <script src="art.js" defer></script><script src="scenes.js" defer></script>
+  <script src="fx.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">К игре</a>
+  <div class="ambient" aria-hidden="true"></div>
+  <header class="site-header">
+    <button class="brand" data-action="nav" data-screen="world" aria-label="Культурная столица — на карту"><img src="assets/chelyabinsk-logo.png" alt="Челябинск — культурная столица 2027" width="716" height="210"></button>
+    <nav aria-label="Разделы игры">
+      <button data-action="nav" data-screen="world" class="nav-button active">Город</button>
+      <button data-action="nav" data-screen="levels" class="nav-button">Уровни</button>
+      <button data-action="nav" data-screen="events" class="nav-button">События</button>
+    </nav>
+    <div class="header-actions">
+      <div class="culture-wallet" title="Очки культуры: +100 за каждый новый уровень"><span id="wallet-icon"></span><strong id="culture-balance">0</strong><span class="wallet-label">культура</span></div>
+      <button class="icon-button" id="sound-button" data-action="sound" aria-label="Включить звук" aria-pressed="false"></button>
+      <button class="icon-button" id="settings-button" data-action="settings" aria-label="Настройки"></button>
+    </div>
+  </header>
+  <div id="storage-warning" class="storage-warning" hidden></div>
+  <main id="main" tabindex="-1"><div id="app"></div></main>
+  <footer class="site-footer"><span>ЮЖНЫЙ УРАЛ <span class="footer-dot">•</span> КУЛЬТУРА ОБЪЕДИНЯЕТ</span><button data-action="help">Как играть <span aria-hidden="true">↗</span></button></footer>
+  <dialog id="modal" closedby="any" aria-labelledby="dialog-title"><div id="dialog-content"></div></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <div id="live-status" class="visually-hidden" role="status" aria-live="polite"></div>
+  <div id="celebration" aria-hidden="true"></div>
+  <noscript>Для запуска игры включите JavaScript в браузере.</noscript>
+</body>
+</html>
+
