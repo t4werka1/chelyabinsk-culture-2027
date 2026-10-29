@@ -16,7 +16,7 @@
   let screen = profile.active && profile.active.status === 'playing' ? 'game' : 'world';
   let chapter = profile.active ? Math.floor((profile.active.levelId - 1) / 6) : E.unlockedChapter(profile);
   let selected = null, armed = null, busy = false, keyboardIndex = 0, hintTimer, toastTimer, audio, pointerStart, ignoreClickUntil = 0;
-  let originalScene = false;
+  let originalScene = false, placePhoto = false;
   const reduced = () => profile.settings.reduced || matchMedia('(prefers-reduced-motion: reduce)').matches;
   function persist() {
     if (saveBlocked) return;
@@ -80,6 +80,17 @@
     return null;
   }
   const complete = () => profile.tasks.every(t => t === 3) && Object.keys(profile.completed).length === 36;
+  function photoCredits(v) {
+    return `<figcaption class="photo-credit"><a href="${v.source}" target="_blank" rel="noopener noreferrer">${esc(v.credit)} · ${v.year}</a><a href="${v.licenseUrl}" target="_blank" rel="noopener noreferrer">${esc(v.license)}</a></figcaption>`;
+  }
+  function placeInfo() {
+    const ch = D.chapters[chapter], v = ch.venue;
+    showDialog(v.name, `<figure class="place-detail-photo"><img src="${v.photo}" alt="${esc(v.name)} — реальная фотография" width="1280" height="800">${photoCredits(v)}</figure><p>${esc(v.note)}</p><div class="place-detail-links"><a data-satellite href="${v.satellite}" target="_blank" rel="noopener noreferrer">${I('map')}Спутниковый вид ${I('external')}</a></div><p class="source-note">Фотография ${v.year} года. Игровая сцена — художественная интерпретация места, покупки — подготовка к событию.</p>`,'place-details');
+  }
+  function venuePanel(ch, own, stage) {
+    const v = ch.venue;
+    return `<div class="venue-panel"><div class="venue-cover" style="background-image:url('${v.photo}')"><div class="venue-cover-content"><div class="eyebrow">ГЛАВА 0${chapter+1} / 06 · ${ch.city}</div><h2>${esc(v.name)}</h2><p>${esc(v.caption)}</p></div><button class="place-info-button" data-action="place-info">О месте ${I('external')}</button></div><div class="place-toolbar"><div class="scene-switch" role="group" aria-label="Сравнение площадки"><button data-action="scene-view" data-view="original" aria-pressed="${!placePhoto&&originalScene}">До</button><button data-action="scene-view" data-view="current" aria-pressed="${!placePhoto&&!originalScene}">Моя площадка</button></div><button data-action="place-photo" aria-pressed="${placePhoto}">${I('map')}Фото места</button></div>${placePhoto?`<figure class="place-photo"><img src="${v.photo}" alt="${esc(v.name)}: фотография ${v.year} года" width="1280" height="800">${photoCredits(v)}</figure>`:`<div class="world-scene">${A.scene(ch.scene,originalScene?[false,false,false]:own)}<div class="scene-event-tag">${I('calendar')} ${ch.events[0].title}</div>${ch.tasks.map((t,i)=>`<button class="scene-pin ${!originalScene&&own[i]?'is-built':''}" style="--pin-x:${t.pin[0]}%;--pin-y:${t.pin[1]}%" data-action="scene-upgrade" data-id="${chapter}" data-choice="${i}" aria-label="${esc(t.title)}${own[i]?', куплено':', предпросмотр'}"><b>${!originalScene&&own[i]?I('check'):i+1}</b><span>${esc(t.title)}</span></button>`).join('')}<div class="scene-caption"><div>${I('map')}<strong>Игровая интерпретация места</strong></div><span>${originalScene?'До подготовки':stage===3?'Готово к событию':`${stage} из 3 улучшений`}</span></div></div>`}<div class="venue-bottom"><span>${I('sparkle')}${stage===3?'Площадка подготовлена':'Две победы → одно улучшение'}</span><span class="stage-dots">${own.map(v=>`<i class="${v?'lit':''}"></i>`).join('')}</span></div></div>`;
+  }
   function world() {
     const ch = D.chapters[chapter], stage = profile.tasks[chapter], next = nextLevel();
     const locked = chapter > E.unlockedChapter(profile), own = profile.upgrades[chapter];
@@ -87,21 +98,21 @@
     const cta = resume ? `Продолжить · ${profile.active.levelId}` : next ? `Играть · уровень ${next}` : complete() ? 'Повторить любимый уровень' : 'Выбрать улучшение';
     const wins = Object.keys(profile.completed).length;
     app.innerHTML = `<section class="world-heading"><div><div class="eyebrow"><span class="tiny-dot"></span>ТВОЯ КУЛЬТУРНАЯ СТОЛИЦА</div><h1>Маленький ход.<br><span class="gradient-text">Большие перемены.</span></h1></div><div class="world-invitation"><p>Собирай комбинации. Получай очки культуры.<br>Создавай места, в которых хочется быть.</p><button class="primary-button play-cta" data-action="main-play">${I('play')}${cta}${next || resume && profile.completed[profile.active.levelId] === undefined ? `<span class="cta-reward">+100 ${I('sparkle')}</span>` : ''}</button><small>${wins}/36 уровней · ${profile.tasks.reduce((a,b)=>a+b,0)}/18 улучшений</small></div></section>
-      <section class="world-layout"><div class="venue-panel"><div class="venue-top"><div><div class="eyebrow">ГЛАВА 0${chapter+1} <span> / 06</span></div><h2>${ch.city}</h2></div><div class="scene-switch" role="group" aria-label="Сравнение площадки"><button data-action="scene-view" data-view="original" aria-pressed="${originalScene}">До</button><button data-action="scene-view" data-view="current" aria-pressed="${!originalScene}">Моя площадка</button></div></div><div class="world-scene">${A.scene(ch.scene, originalScene ? [false,false,false] : own)}<div class="scene-event-tag">${I('calendar')} ${ch.events[0].title}</div><div class="scene-caption"><div>${I('map')}<strong>${ch.short}</strong></div><span>${originalScene ? 'До улучшений' : stage === 3 ? 'Готово к празднику' : `${stage} из 3 улучшений`}</span></div></div><div class="venue-bottom"><span>${I('sparkle')}Твоя версия культурного 2027</span><span class="stage-dots">${own.map(v=>`<i class="${v?'lit':''}"></i>`).join('')}</span></div></div>
+      <section class="world-layout">${venuePanel(ch, own, stage)}
       <aside class="upgrade-panel" id="preparation"><div class="upgrade-heading"><div class="eyebrow">${locked?'ВПЕРЕДИ НОВАЯ ИСТОРИЯ':'МАСТЕРСКАЯ ПЕРЕМЕН'}</div><h2>${ch.title}</h2><p>${locked?'Пройди предыдущую главу, чтобы покупать улучшения здесь.':'Выбери, с чего начать. Два новых уровня — одно улучшение.'}</p></div><div class="task-list">${ch.tasks.map((task,i)=>{
         const done=own[i], afford=profile.culture>=200 && !locked;
-        return `<article class="task-card ${done?'done':''}"><div class="upgrade-symbol symbol-${i}">${I(done?'check':['flag','brush','sparkle'][i])}</div><div class="upgrade-copy"><h3>${task.title}</h3><p>${task.text}</p><div class="upgrade-actions"><button class="preview-button" data-action="upgrade-preview" data-id="${chapter}" data-choice="${i}">${done?'Посмотреть':'Примерить'} ${I('external')}</button><button class="task-button" data-action="build" data-id="${chapter}" data-choice="${i}" ${done||!afford?'disabled':''}><span>${done?I('check')+'Куплено':I('sparkle')+'200'}</span></button></div>${!done&&!locked&&!afford?`<small class="missing-culture">Ещё ${Math.ceil((200-profile.culture)/100)} ${profile.culture===100?'победа':'победы'} до покупки</small>`:''}</div></article>`;
+        return `<article class="task-card ${done?'done':''}"><div class="upgrade-symbol symbol-${i}">${I(done?'check':['flag','brush','sparkle'][i])}</div><div class="upgrade-copy"><div class="task-number">УЛУЧШЕНИЕ 0${i+1}</div><h3>${task.title}</h3><p>${task.text}</p><p class="task-benefit">${task.benefit}</p><div class="upgrade-actions"><button class="preview-button" data-action="upgrade-preview" data-id="${chapter}" data-choice="${i}">${done?'Посмотреть':'Примерить'} ${I('external')}</button><button class="task-button" data-action="build" data-id="${chapter}" data-choice="${i}" ${done||!afford?'disabled':''}><span>${done?I('check')+'Куплено':I('sparkle')+'200'}</span></button></div>${!done&&!locked&&!afford?`<small class="missing-culture">Ещё ${Math.ceil((200-profile.culture)/100)} ${profile.culture===100?'победа':'победы'} до покупки</small>`:''}</div></article>`;
       }).join('')}</div></aside></section>
       ${complete()?`<div class="completion-banner">${I('trophy')}<div><strong>Южный Урал готов встречать гостей</strong><p>36 уровней. 18 перемен. Шесть площадок, которые ты создал.</p></div></div>`:''}
       <section class="journey" aria-label="Маршрут подготовки"><div class="section-line"><h2>Шесть мест. Одна большая история.</h2><span>Выбери площадку</span></div><div class="chapter-route">${D.chapters.map((c,i)=>{
         const done=profile.tasks[i]===3,closed=i>E.unlockedChapter(profile);
-        return `<button class="chapter-node ${i===chapter?'current':''} ${done?'complete':''}" data-action="chapter" data-id="${i}" aria-label="${c.city}: ${c.short}${closed?', пока закрыто':''}" aria-current="${i===chapter?'step':'false'}"><span class="node-circle">${done?I('check'):closed?I('lock'):String(i+1).padStart(2,'0')}</span><strong>${c.city}</strong><small>${c.short}</small></button>`;
+        return `<button class="chapter-node ${i===chapter?'current':''} ${done?'complete':''}" data-action="chapter" data-id="${i}" aria-label="${c.city}: ${c.short}${closed?', пока закрыто':''}" aria-current="${i===chapter?'step':'false'}"><span class="chapter-photo"><img src="${c.venue.photo}" alt="" width="320" height="180" loading="lazy"><span class="node-circle">${done?I('check'):closed?I('lock'):String(i+1).padStart(2,'0')}</span></span><strong>${c.city}</strong><small>${c.short}</small></button>`;
       }).join('')}</div></section><p class="scene-disclaimer">Игровые интерпретации площадок. Вдохновлены событиями предварительной программы 2027 года.</p>`;
   }
   function upgradePreview(ch, choice) {
     const own = [...profile.upgrades[ch]], already = own[choice]; own[choice] = true;
     const task = D.chapters[ch].tasks[choice], canBuy = !already && profile.culture >= 200 && ch <= E.unlockedChapter(profile);
-    showDialog(task.title, `<div class="upgrade-preview-scene">${A.scene(D.chapters[ch].scene, own, false, choice)}<span>${already?'Уже на твоей площадке':'Предпросмотр улучшения'}</span></div><p>${task.result}</p><div class="purchase-note">${already?'Это улучшение уже куплено.':ch>E.unlockedChapter(profile)?'Сначала заверши предыдущую главу.':canBuy?'Стоимость: 200 очков культуры.':`Нужно ещё ${200-profile.culture} очков культуры. Две новые победы дают 200 очков.`}</div><div class="modal-actions"><button class="secondary-button" data-action="close">Вернуться</button>${!already?`<button class="primary-button" data-action="build" data-id="${ch}" data-choice="${choice}" ${!canBuy?'disabled':''}>${I('sparkle')}Купить за 200</button>`:''}</div>`, 'upgrade-preview');
+    showDialog(task.title, `<div class="upgrade-preview-scene">${A.scene(D.chapters[ch].scene, own, false, choice)}<span>${already?'Уже на твоей площадке':'Предпросмотр улучшения'}</span></div><p>${task.text}</p><p class="benefit-note">${task.benefit}</p><div class="purchase-note">${already?'Это улучшение уже куплено.':ch>E.unlockedChapter(profile)?'Сначала заверши предыдущую главу.':canBuy?'Стоимость: 200 очков культуры.':`Нужно ещё ${200-profile.culture} очков культуры. Две новые победы дают 200 очков.`}</div><div class="modal-actions"><button class="secondary-button" data-action="close">Вернуться</button>${!already?`<button class="primary-button" data-action="build" data-id="${ch}" data-choice="${choice}" ${!canBuy?'disabled':''}>${I('sparkle')}Купить за 200</button>`:''}</div>`, 'upgrade-preview');
   }
   function levels() {
     app.innerHTML = `<div class="page-heading"><div><div class="eyebrow"><span class="tiny-dot"></span>36 ШАГОВ К БОЛЬШОМУ ГОДУ</div><h1>Уровни вдохновения</h1></div><p>За каждый новый уровень — 100 очков культуры. За две победы — улучшение твоей площадки.</p></div>${D.chapters.map((ch, i) => `<section class="levels-chapter"><div class="levels-chapter-head"><div><div class="eyebrow">ГЛАВА ${String(i + 1).padStart(2, '0')} · ${ch.city}</div><h2>${ch.title}</h2><small>${i > E.unlockedChapter(profile) ? 'Откроется после 6 уровней и 3 заданий предыдущей главы' : `${profile.tasks[i]} из 3 заданий подготовлено`}</small></div>${I(i > E.unlockedChapter(profile) ? 'lock' : 'flag')}</div><div class="level-grid">${D.levels.slice(i * 6, i * 6 + 6).map(l => {
@@ -110,7 +121,7 @@
     }).join('')}</div></section>`).join('')}`;
   }
   function events() {
-    app.innerHTML = `<div class="page-heading"><div><div class="eyebrow"><span class="tiny-dot"></span>ВДОХНОВЛЕНО ЮЖНЫМ УРАЛОМ</div><h1>За каждой игрой — культура</h1></div><p>Узнай больше о событиях, которые вдохновили наши игровые истории.</p></div><p class="source-note">Названия взяты из предварительной программы 2027 года. Сроки и площадки могут уточняться. Подготовка пространств и последовательность глав — игровой сюжет.</p><div class="events-grid">${D.chapters.flatMap((ch, i) => ch.events.map((e, j) => `<article class="event-card"><div class="event-art">${A.scene(ch.scene, profile.upgrades[i], true)}</div><div class="event-body"><div class="event-tag">${e.tag} · ${ch.city}</div><h2>${e.title}</h2><p>${e.text}</p><a href="${e.url}" target="_blank" rel="noopener noreferrer">К программе события ${I('external')}</a></div><button class="event-venue" data-action="event-venue" data-id="${i}">К площадке события ${I('arrow')}</button></article>`)).join('')}</div>`;
+    app.innerHTML = `<div class="page-heading"><div><div class="eyebrow"><span class="tiny-dot"></span>ВДОХНОВЛЕНО ЮЖНЫМ УРАЛОМ</div><h1>За каждой игрой — культура</h1></div><p>Узнай больше о событиях, которые вдохновили наши игровые истории.</p></div><p class="source-note">Названия взяты из предварительной программы 2027 года. Сроки и площадки могут уточняться. Подготовка пространств и последовательность глав — игровой сюжет.</p><div class="events-grid">${D.chapters.flatMap((ch, i) => ch.events.map((e, j) => `<article class="event-card"><div class="event-art"><img class="event-place-photo" src="${ch.venue.photo}" alt="${esc(ch.venue.name)} — реальная фотография" width="640" height="360" loading="lazy"><span class="event-photo-label">${ch.venue.name} · фото ${ch.venue.year}</span></div><div class="event-body"><div class="event-tag">${e.tag} · ${ch.city}</div><h2>${e.title}</h2><p>${e.text}</p><small class="event-photo-credit"><a href="${ch.venue.source}" target="_blank" rel="noopener noreferrer">${esc(ch.venue.credit)}</a> · <a href="${ch.venue.licenseUrl}" target="_blank" rel="noopener noreferrer">${esc(ch.venue.license)}</a></small><a href="${e.url}" target="_blank" rel="noopener noreferrer">К программе события ${I('external')}</a></div><button class="event-venue" data-action="event-venue" data-id="${i}">К игровой площадке ${I('arrow')}</button></article>`)).join('')}</div>`;
   }
   const goalIcon = t => t.type === 'color' ? A.piece(t.color) : I(t.type === 'ice' ? 'ice' : 'crate');
   const goalName = t => t.type === 'color' ? D.pieces[t.color].name : t.type === 'ice' ? 'Ледяное покрытие' : 'Ящики';
@@ -238,7 +249,7 @@
   function build(ch, choice) {
     const next = E.buildTask(profile, ch, choice); if (!next) return;
     const wasComplete = profile.tasks[ch] === 2;
-    profile = next; persist(); chapter = ch; screen = 'world'; originalScene = false; closeDialog(); render(); sound('build'); celebrate();
+    profile = next; persist(); chapter = ch; screen = 'world'; originalScene = false; placePhoto = false; closeDialog(); render(); sound('build'); celebrate();
     const task = D.chapters[ch].tasks[choice];
     showDialog(complete() ? 'Культурная столица начинается с тебя' : 'Ещё одно место стало особенным', `<div class="upgrade-preview-scene">${A.scene(D.chapters[ch].scene, profile.upgrades[ch], false, choice)}</div><p>${task.result}</p><div class="reward-detail">−200 очков культуры${wasComplete ? '<br>Площадка готова! Бонус: по одному усилителю каждого типа.' : ''}</div><div class="modal-actions"><button class="primary-button" data-action="after-build" data-id="${ch}">${wasComplete && ch<5?'В следующую главу':'Посмотреть на город'} ${I('arrow')}</button></div>`, 'reward upgrade-preview');
   }
@@ -266,10 +277,12 @@
     else if (action === 'tutorial-close') { profile.tutorialSeen = true; persist(); closeDialog(); scheduleHint(); }
     else if (action === 'settings') settings();
     else if (action === 'sound') { profile.settings.sound = !profile.settings.sound; persist(); header(); sound(); }
-    else if (action === 'chapter') { chapter = id; originalScene = false; render(); }
-    else if (action === 'event-venue') { chapter = id; originalScene = false; navigate('world'); }
-    else if (action === 'scene-view') { originalScene = button.dataset.view === 'original'; world(); }
-    else if (action === 'upgrade-preview') upgradePreview(id, Number(button.dataset.choice));
+    else if (action === 'chapter') { chapter = id; originalScene = false; placePhoto = false; render(); }
+    else if (action === 'event-venue') { chapter = id; originalScene = false; placePhoto = false; navigate('world'); }
+    else if (action === 'place-photo') { placePhoto = true; world(); }
+    else if (action === 'place-info') placeInfo();
+    else if (action === 'scene-view') { placePhoto = false; originalScene = button.dataset.view === 'original'; world(); }
+    else if (action === 'upgrade-preview' || action === 'scene-upgrade') upgradePreview(id, Number(button.dataset.choice));
     else if (action === 'main-play') {
       if (profile.active?.status === 'playing') { screen = 'game'; selected = null; render(); }
       else if (nextLevel()) begin(nextLevel());
